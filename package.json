@@ -1,0 +1,64 @@
+{
+  "name": "@getlea/web3",
+  "version": "1.0.0",
+  "description": "JavaScript SDK for interacting with the Lea blockchain",
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "module": "./dist/lea-wallet.node.mjs",
+  "browser": "./dist/lea-wallet.web.min.js",
+  "exports": {
+    ".": {
+      "node": {
+        "import": "./dist/lea-wallet.node.mjs"
+      },
+      "browser": {
+        "import": "./dist/lea-wallet.web.js",
+        "script": "./dist/lea-wallet.web.min.js"
+      },
+      "default": "./dist/lea-wallet.node.mjs"
+    }
+  },
+  "scripts": {
+    "clean": "del './dist/**' '!./dist/README.md'",
+    "build:node:esm": "esbuild src/index.js --bundle --outfile=dist/lea-wallet.node.mjs --format=esm --platform=node --sourcemap",
+    "build:node:cjs": "esbuild src/index.js --bundle --outfile=dist/lea-wallet.node.cjs --format=cjs --platform=node --sourcemap",
+    "build:browser:esm": "esbuild src/index.js --bundle --outfile=dist/lea-wallet.web.js --format=esm --platform=browser --sourcemap",
+    "build:browser:iife": "esbuild src/index.js --bundle --outfile=dist/lea-wallet.web.min.js --format=iife --global-name=lea --platform=browser --minify --sourcemap",
+    "build": "npm run clean && npm run build:node:esm && npm run build:node:cjs && npm run build:browser:esm && npm run build:browser:iife",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublishOnly": "npm run build"
+  },
+  "author": "Allwin Ketnawang <allwin@getlea.org>",
+  "license": "MIT",
+  "dependencies": {
+    "@getlea/keygen": "^1.0.0",
+    "@getlea/ltm": "file:../ltm",
+    "@noble/hashes": "^1.8.0",
+    "hash-wasm": "^4.12.0"
+  },
+  "devDependencies": {
+    "del-cli": "^6.0.0",
+    "esbuild": "^0.25.2"
+  },
+  "engines": {
+    "node": ">=19.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://getlea.org",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LEA-Blockchain/web3.git"
+  },
+  "keywords": [
+    "lea",
+    "blockchain",
+    "wallet",
+    "web3",
+    "sdk"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "comment": "Reads the last signed transaction hash for a given address",
+  "sequence": 1,
+  "feePayer": "",
+  "gasLimit": 500000000,
+  "gasPrice": 10,
+  "signers": [],
+  "constants": {
+    "contractAddress": "$addr(1111111111111111111111111111111111111111111111111111111111111111)",
+    "address": "$addr(lea16wk0htexlu9pdd38mmgaanf4jdzwp9pkwq4m932exkvgaartnw7s5ef25d)"
+  },
+  "invocations": [
+    {
+      "targetAddress": "$const(contractAddress)",
+      "instructions": [
+        {
+          "comment": "get lea account last tx hash",
+          "uleb": 9
+        },
+        {
+          "comment": "address to get the last tx hash for",
+          "uleb": "$const(address)"
+        }
+      ]
+    }
+  ],
+  "resultSchema": {
+    "$const(contractAddress)": {
+      "lastTxHash": "vector(0)"
+    }
+  }
+}

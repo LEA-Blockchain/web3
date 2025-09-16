@@ -1,0 +1,33 @@
+{
+  "comment": "Burns a specified amount of LEA coins from the owner's account.",
+  "sequence": 1,
+  "feePayer": "burner",
+  "gasLimit": 500000000,
+  "gasPrice": 10,
+  "signers": [],
+  "constants": {
+    "contractAddress": "$addr(1111111111111111111111111111111111111111111111111111111111111111)",
+    "owner": "$addr(burner)",
+    "amount": "500"
+  },
+  "invocations": [
+    {
+      "targetAddress": "$const(contractAddress)",
+      "instructions": [
+        {
+          "comment": "Burn LEA tokens",
+          "uleb": 3
+        },
+        {
+          "comment": "Owner account",
+          "uleb": "$const(owner)"
+        },
+        {
+          "comment": "Amount to burn",
+          "uleb": "$const(amount)"
+        }
+      ]
+    }
+  ],
+  "resultSchema": {}
+}

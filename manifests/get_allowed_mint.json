@@ -1,0 +1,32 @@
+{
+  "comment": "Retrieves the allowed minting amount for a specific account.",
+  "sequence": 1,
+  "feePayer": "",
+  "gasLimit": 500000000,
+  "gasPrice": 10,
+  "signers": [],
+  "constants": {
+    "contractAddress": "$addr(1111111111111111111111111111111111111111111111111111111111111111)",
+    "address": "$addr(lea16wk0htexlu9pdd38mmgaanf4jdzwp9pkwq4m932exkvgaartnw7s5ef25d)"
+  },
+  "invocations": [
+    {
+      "targetAddress": "$const(contractAddress)",
+      "instructions": [
+        {
+          "comment": "get allowed minting amount",
+          "uleb": 7
+        },
+        {
+          "comment": "account ot get the allowed mint for",
+          "uleb": "$const(address)"
+        }
+      ]
+    }
+  ],
+  "resultSchema": {
+    "$const(contractAddress)": {
+      "allowedMint": "uleb(0)"
+    }
+  }
+}

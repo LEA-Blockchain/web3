@@ -1,0 +1,32 @@
+{
+  "comment": "Read lea account balance",
+  "sequence": 1,
+  "feePayer": "",
+  "gasLimit": 500000000,
+  "gasPrice": 10,
+  "signers": [],
+  "constants": {
+    "contractAddress": "$addr(1111111111111111111111111111111111111111111111111111111111111111)",
+    "address": "$addr(lea16wk0htexlu9pdd38mmgaanf4jdzwp9pkwq4m932exkvgaartnw7s5ef25d)"
+  },
+  "invocations": [
+    {
+      "targetAddress": "$const(contractAddress)",
+      "instructions": [
+        {
+          "comment": "get lea account balance",
+          "uleb": 8
+        },
+        {
+          "comment": "address to get the allowed mint for",
+          "uleb": "$const(address)"
+        }
+      ]
+    }
+  ],
+  "resultSchema": {
+    "$const(contractAddress)": {
+      "balance": "uleb(0)"
+    }
+  }
+}

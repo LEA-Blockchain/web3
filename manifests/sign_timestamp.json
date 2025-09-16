@@ -1,0 +1,25 @@
+{
+  "comment": "This LTM simply acts as a wrapper for our internal server authentication.",
+  "sequence": 1,
+  "feePayer": "publisher",
+  "gasLimit": 0,
+  "gasPrice": 0,
+  "signers": [],
+  "constants": {
+    "timestamp": "1"
+  },
+  "invocations": [
+    {
+      "targetAddress": "$addr(publisher)",
+      "instructions": [
+        {
+          "comment": "Timestamp",
+          "uleb": "$const(timestamp)"
+        },
+        {
+          "INLINE": "$pubset(publisher)"
+        }
+      ]
+    }
+  ]
+}

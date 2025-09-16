@@ -1,0 +1,37 @@
+{
+  "comment": "Mints new LEA coins to a specified account.",
+  "sequence": 1,
+  "feePayer": "minter",
+  "gasLimit": 500000000,
+  "gasPrice": 10,
+  "signers": [],
+  "constants": {
+    "contractAddress": "$addr(1111111111111111111111111111111111111111111111111111111111111111)",
+    "recipient": "$addr(0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef)",
+    "amount": "10000"
+  },
+  "invocations": [
+    {
+      "targetAddress": "$const(contractAddress)",
+      "instructions": [
+        {
+          "comment": "Mint LEA Coins",
+          "uleb": 2
+        },
+        {
+          "comment": "Delegate mint authority",
+          "uleb": "$addr(minter)"
+        },
+        {
+          "comment": "Recipient account",
+          "uleb": "$const(recipient)"
+        },
+        {
+          "comment": "Amount to mint",
+          "uleb": "$const(amount)"
+        }
+      ]
+    }
+  ],
+  "resultSchema": {}
+}

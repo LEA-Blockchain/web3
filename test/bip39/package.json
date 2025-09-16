@@ -1,0 +1,16 @@
+{
+  "name": "bip39",
+  "version": "1.0.0",
+  "description": "",
+  "main": "bip39.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@noble/hashes": "^1.7.2",
+    "@scure/bip39": "^1.5.4"
+  }
+}

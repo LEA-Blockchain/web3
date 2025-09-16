@@ -1,0 +1,22 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+.env
+
+# Logs
+logs/
+*.log
+.pm2/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDEs and editors
+.vscode/
+.idea/
+.sublime-workspace
+.sublime-project
+
+GEMINI.md

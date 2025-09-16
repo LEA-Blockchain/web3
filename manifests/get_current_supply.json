@@ -1,0 +1,27 @@
+{
+  "comment": "Retrieves the current total supply of LEA coins.",
+  "sequence": 1,
+  "feePayer": "",
+  "gasLimit": 500000000,
+  "gasPrice": 10,
+  "signers": [],
+  "constants": {
+    "contractAddress": "$addr(1111111111111111111111111111111111111111111111111111111111111111)"
+  },
+  "invocations": [
+    {
+      "targetAddress": "$const(contractAddress)",
+      "instructions": [
+        {
+          "comment": "Get current LEA supply",
+          "uleb": 6
+        }
+      ]
+    }
+  ],
+  "resultSchema": {
+    "$const(contractAddress)": {
+      "currentSupply": "uleb(0)"
+    }
+  }
+}

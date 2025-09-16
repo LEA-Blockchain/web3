@@ -1,0 +1,37 @@
+{
+  "comment": "transfers lea coins from 1 to another account",
+  "sequence": 1,
+  "feePayer": "publisher",
+  "gasLimit": 500000000,
+  "gasPrice": 10,
+  "signers": [],
+  "constants": {
+    "contractAddress": "$addr(1111111111111111111111111111111111111111111111111111111111111111)",
+    "receiver": "$addr(0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef)",
+    "amount": "4000"
+  },
+  "invocations": [
+    {
+      "targetAddress": "$const(contractAddress)",
+      "instructions": [
+        {
+          "comment": "lea transfer tokens ",
+          "uleb": 4
+        },
+        {
+          "comment": "sender account",
+          "uleb": "$addr(publisher)"
+        },
+        {
+          "comment": "receiver account",
+          "uleb": "$const(receiver)"
+        },
+        {
+          "comment": "amount",
+          "uleb": "$const(amount)"
+        }
+      ]
+    }
+  ],
+  "resultSchema": {}
+}
