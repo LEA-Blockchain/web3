@@ -2389,6 +2389,7 @@ __export(index_exports, {
   base64ToUint8Array: () => base64ToUint8Array,
   basePodBurn: () => basePodBurn,
   basePodGetBalance: () => basePodGetBalance,
+  basePodGetCurrentSupply: () => basePodGetCurrentSupply,
   basePodMint: () => basePodMint,
   basePodTransfer: () => basePodTransfer,
   combineUint8Arrays: () => combineUint8Arrays,
@@ -8210,6 +8211,23 @@ async function basePodBurn(connection, fromAcccount, amount) {
     build: (prevTxHash) => SystemProgram.burn(fromAcccount, amount, { prevTxHash })
   });
 }
+async function basePodGetCurrentSupply(connection) {
+  if (!connection) throw new Error("basePodGetCurrentSupply: 'connection' is required");
+  if (typeof BASE_POD_HEX === "undefined") throw new Error("basePodGetCurrentSupply: 'BASE_POD_HEX' is not defined");
+  const getCurrentSupplyObject = await SystemProgram.getCurrentSupply();
+  let getCurrentSupplyResponse;
+  try {
+    getCurrentSupplyResponse = await connection.sendTransaction(getCurrentSupplyObject);
+  } catch (e) {
+    throw new Error(`basePodGetCurrentSupply: sendTransaction failed | cause=${e?.message || e}`);
+  }
+  ensureOk(getCurrentSupplyResponse, "basePodGetCurrentSupply");
+  const baseEntry = getBaseEntry(getCurrentSupplyResponse.decoded, "basePodGetCurrentSupply");
+  const currentSupply = baseEntry.currentSupply;
+  if (typeof currentSupply === "bigint") return currentSupply;
+  if (typeof currentSupply === "number") return BigInt(currentSupply);
+  throw new Error("basePodGetCurrentSupply: currentSupply field missing or invalid");
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   ADDRESS_HRP,
@@ -8224,6 +8242,7 @@ async function basePodBurn(connection, fromAcccount, amount) {
   base64ToUint8Array,
   basePodBurn,
   basePodGetBalance,
+  basePodGetCurrentSupply,
   basePodMint,
   basePodTransfer,
   combineUint8Arrays,

@@ -8181,6 +8181,23 @@ async function basePodBurn(connection, fromAcccount, amount) {
     build: (prevTxHash) => SystemProgram.burn(fromAcccount, amount, { prevTxHash })
   });
 }
+async function basePodGetCurrentSupply(connection) {
+  if (!connection) throw new Error("basePodGetCurrentSupply: 'connection' is required");
+  if (typeof BASE_POD_HEX === "undefined") throw new Error("basePodGetCurrentSupply: 'BASE_POD_HEX' is not defined");
+  const getCurrentSupplyObject = await SystemProgram.getCurrentSupply();
+  let getCurrentSupplyResponse;
+  try {
+    getCurrentSupplyResponse = await connection.sendTransaction(getCurrentSupplyObject);
+  } catch (e) {
+    throw new Error(`basePodGetCurrentSupply: sendTransaction failed | cause=${e?.message || e}`);
+  }
+  ensureOk(getCurrentSupplyResponse, "basePodGetCurrentSupply");
+  const baseEntry = getBaseEntry(getCurrentSupplyResponse.decoded, "basePodGetCurrentSupply");
+  const currentSupply = baseEntry.currentSupply;
+  if (typeof currentSupply === "bigint") return currentSupply;
+  if (typeof currentSupply === "number") return BigInt(currentSupply);
+  throw new Error("basePodGetCurrentSupply: currentSupply field missing or invalid");
+}
 export {
   ADDRESS_HRP,
   BIP44_PURPOSE,
@@ -8194,6 +8211,7 @@ export {
   base64ToUint8Array,
   basePodBurn,
   basePodGetBalance,
+  basePodGetCurrentSupply,
   basePodMint,
   basePodTransfer,
   combineUint8Arrays,
