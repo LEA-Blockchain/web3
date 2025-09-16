@@ -1,6 +1,6 @@
 {
   "name": "@getlea/web3",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "JavaScript SDK for interacting with the Lea blockchain",
   "type": "module",
   "files": [
