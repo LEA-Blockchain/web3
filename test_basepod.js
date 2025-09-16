@@ -1,5 +1,5 @@
-import { basePodGetBalance, basePodTransfer, basePodMint, basePodBurn, Wallet, Connection, generateMnemonic } from './src/index.js';
-//import { basePodGetBalance, basePodTransfer, Wallet, Connection, generateMnemonic } from './dist/lea-wallet.node.mjs'
+//import { basePodGetBalance, basePodTransfer, basePodMint, basePodBurn, Wallet, Connection, generateMnemonic } from './src/index.js';
+import { basePodGetBalance, basePodTransfer, basePodMint, basePodBurn, Wallet, Connection, generateMnemonic } from './dist/lea-wallet.node.mjs'
 
 import fs from 'fs';
 
@@ -26,7 +26,7 @@ console.log(`Account Address (bech32m): ${account.address}`);
 
 console.log("\n\n--- Creating PublishKeyPair Transaction ---");
 
-const connection = Connection("local");
+const connection = Connection("devnet");
 
 //const lastTxHash = await fetchPrevTxHashFromNetwork(connection, "lea1j4nfphwcx7lay0lys29wfsdy4ruwhr3th080m0gkt785ayga73fss2wdgf");
 //console.log("lastTxHash", lastTxHash);
