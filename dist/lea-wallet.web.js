@@ -1889,7 +1889,7 @@ async function generateKeyset(masterSeed = null) {
   return { keyset, address, addressHex };
 }
 
-// ../ltm/dist/ltm.web.mjs
+// node_modules/@getlea/ltm/dist/ltm.web.mjs
 var __toBinary2 = /* @__PURE__ */ (() => {
   var table = new Uint8Array(128);
   for (var i = 0; i < 64; i++) table[i < 26 ? i + 65 : i < 52 ? i + 71 : i < 62 ? i - 4 : i * 4 - 205] = i;
@@ -4356,17 +4356,19 @@ hash-wasm/dist/index.esm.js:
    * (c) Dani Biro
    * @license MIT
    *)
-*/
-/*! Bundled license information:
-
-hash-wasm/dist/index.esm.js:
-  (*!
-   * hash-wasm (https://www.npmjs.com/package/hash-wasm)
-   * (c) Dani Biro
-   * @license MIT
-   *)
 
 @noble/hashes/esm/utils.js:
   (*! noble-hashes - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
+
+@getlea/ltm/dist/ltm.web.mjs:
+  (*! Bundled license information:
+  
+  hash-wasm/dist/index.esm.js:
+    (*!
+     * hash-wasm (https://www.npmjs.com/package/hash-wasm)
+     * (c) Dani Biro
+     * @license MIT
+     *)
+  *)
 */
 //# sourceMappingURL=lea-wallet.web.js.map
