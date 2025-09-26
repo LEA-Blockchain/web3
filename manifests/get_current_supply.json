@@ -3,7 +3,7 @@
   "sequence": 1,
   "feePayer": "",
   "gasLimit": 500000000,
-  "gasPrice": 10,
+  "gasPrice": 0,
   "signers": [],
   "constants": {
     "contractAddress": "$addr(1111111111111111111111111111111111111111111111111111111111111111)"

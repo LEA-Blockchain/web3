@@ -7663,7 +7663,7 @@ var transfer_default = {
   sequence: 1,
   feePayer: "publisher",
   gasLimit: 5e8,
-  gasPrice: 10,
+  gasPrice: 0,
   signers: [],
   constants: {
     contractAddress: "$addr(1111111111111111111111111111111111111111111111111111111111111111)",
@@ -7702,7 +7702,7 @@ var mint_default = {
   sequence: 1,
   feePayer: "minter",
   gasLimit: 5e8,
-  gasPrice: 10,
+  gasPrice: 0,
   signers: [],
   constants: {
     contractAddress: "$addr(1111111111111111111111111111111111111111111111111111111111111111)",
@@ -7741,7 +7741,7 @@ var burn_default = {
   sequence: 1,
   feePayer: "burner",
   gasLimit: 5e8,
-  gasPrice: 10,
+  gasPrice: 0,
   signers: [],
   constants: {
     contractAddress: "$addr(1111111111111111111111111111111111111111111111111111111111111111)",
@@ -7776,7 +7776,7 @@ var publish_keyset_default = {
   sequence: 1,
   feePayer: "publisher",
   gasLimit: 5e8,
-  gasPrice: 10,
+  gasPrice: 0,
   signers: [],
   constants: {
     contractAddress: "$addr(1111111111111111111111111111111111111111111111111111111111111111)"
@@ -7802,7 +7802,7 @@ var mint_whitelist_default = {
   sequence: 1,
   feePayer: "authority",
   gasLimit: 5e8,
-  gasPrice: 10,
+  gasPrice: 0,
   signers: [],
   constants: {
     contractAddress: "$addr(1111111111111111111111111111111111111111111111111111111111111111)",
@@ -7836,7 +7836,7 @@ var get_allowed_mint_default = {
   sequence: 1,
   feePayer: "",
   gasLimit: 5e8,
-  gasPrice: 10,
+  gasPrice: 0,
   signers: [],
   constants: {
     contractAddress: "$addr(1111111111111111111111111111111111111111111111111111111111111111)",
@@ -7870,7 +7870,7 @@ var get_balance_default = {
   sequence: 1,
   feePayer: "",
   gasLimit: 5e8,
-  gasPrice: 10,
+  gasPrice: 0,
   signers: [],
   constants: {
     contractAddress: "$addr(1111111111111111111111111111111111111111111111111111111111111111)",
@@ -7904,7 +7904,7 @@ var get_current_supply_default = {
   sequence: 1,
   feePayer: "",
   gasLimit: 5e8,
-  gasPrice: 10,
+  gasPrice: 0,
   signers: [],
   constants: {
     contractAddress: "$addr(1111111111111111111111111111111111111111111111111111111111111111)"
@@ -7933,7 +7933,7 @@ var get_last_tx_hash_default = {
   sequence: 1,
   feePayer: "",
   gasLimit: 5e8,
-  gasPrice: 10,
+  gasPrice: 0,
   signers: [],
   constants: {
     contractAddress: "$addr(1111111111111111111111111111111111111111111111111111111111111111)",
