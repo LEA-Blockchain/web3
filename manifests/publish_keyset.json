@@ -20,5 +20,10 @@
         }
       ]
     }
-  ]
+  ],
+  "resultSchema": {
+    "$const(contractAddress)": {
+      "command": "uleb(127)"
+    }
+  }
 }

@@ -25,6 +25,13 @@ function ensureOk(resp, ctx) {
     }
 }
 
+class TxId extends String {
+    constructor(value, result) {
+        super(value);
+        this.result = result;
+    }
+}
+
 async function sendBuiltTx(connection, txObject, ctx) {
     let resp;
     try {
@@ -34,8 +41,14 @@ async function sendBuiltTx(connection, txObject, ctx) {
     }
     ensureOk(resp, ctx);
     const txId = resp.txId;
+    const decoded = resp.decoded;
+    //console.log("Decoded response:", decoded);
+    let baseEntry = undefined;
+    if (decoded && typeof decoded.get === 'function') {
+        baseEntry = decoded.get(BASE_POD_HEX);
+    }
     if (!txId) throw new Error(`${ctx}: missing txId in successful response`);
-    return txId;
+    return new TxId(txId, baseEntry);
 }
 
 async function buildAndSend(connection, ctx, builder) {

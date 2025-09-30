@@ -109,6 +109,9 @@ try {
     const senderBefore = await basePodGetBalance(connection, account);
     const txId = await basePodTransfer(connection, account, "lea1g7s0uf2jc0l85seas5mvj0gvg2pj895uwtpwemmz40qgk6g6drrqxvnh0k", 1n);
     console.log("Transfer TxId:", txId);
+    if (txId.result) {
+        console.log("Transfer Result:", txId.result);
+    }
     const receiverBalance = await basePodGetBalance(connection, "lea1g7s0uf2jc0l85seas5mvj0gvg2pj895uwtpwemmz40qgk6g6drrqxvnh0k");
     console.log("Receiver Balance:", receiverBalance);
     const senderAfter = await basePodGetBalance(connection, account);
@@ -123,6 +126,9 @@ try {
     const beforeMintBalance = await basePodGetBalance(connection, "lea1l6wknctrcsj9qasvwlj9jv4km44v960gqdzk6cs6vjqg05gc6kasfnhj9f");
     const mintTxid = await basePodMint(connection, accountMint, "lea1l6wknctrcsj9qasvwlj9jv4km44v960gqdzk6cs6vjqg05gc6kasfnhj9f", 23n);
     console.log("Mint TxId:", mintTxid);
+    if (mintTxid.result) {
+        console.log("Transfer Result:", mintTxid.result);
+    }
     const mintReceiverBalance = await basePodGetBalance(connection, "lea1l6wknctrcsj9qasvwlj9jv4km44v960gqdzk6cs6vjqg05gc6kasfnhj9f");
     console.log("Mint Receiver Balance:", mintReceiverBalance);
     if (mintReceiverBalance !== beforeMintBalance + 23n) console.warn("⚠️ Balance mismatch after minting");

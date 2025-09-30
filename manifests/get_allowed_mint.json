@@ -26,6 +26,7 @@
   ],
   "resultSchema": {
     "$const(contractAddress)": {
+      "command": "uleb(127)",
       "allowedMint": "uleb(0)"
     }
   }

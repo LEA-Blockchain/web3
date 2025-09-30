@@ -33,5 +33,12 @@
       ]
     }
   ],
-  "resultSchema": {}
+  "resultSchema": {
+    "$const(contractAddress)": {
+      "command": "uleb(127)",
+      "mintAmount": "uleb(1)",
+      "receiver": "vector(2)",
+      "newReceiverBalance": "uleb(3)"
+    }
+  }
 }

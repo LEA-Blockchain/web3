@@ -3823,7 +3823,16 @@ var transfer_default = {
       ]
     }
   ],
-  resultSchema: {}
+  resultSchema: {
+    "$const(contractAddress)": {
+      command: "uleb(127)",
+      sender: "vector(1)",
+      receiver: "vector(2)",
+      amount: "uleb(3)",
+      newSenderBalance: "uleb(4)",
+      newReceiverBalance: "uleb(5)"
+    }
+  }
 };
 
 // manifests/mint.json
@@ -3862,7 +3871,14 @@ var mint_default = {
       ]
     }
   ],
-  resultSchema: {}
+  resultSchema: {
+    "$const(contractAddress)": {
+      command: "uleb(127)",
+      mintAmount: "uleb(1)",
+      receiver: "vector(2)",
+      newReceiverBalance: "uleb(3)"
+    }
+  }
 };
 
 // manifests/burn.json
@@ -3897,7 +3913,11 @@ var burn_default = {
       ]
     }
   ],
-  resultSchema: {}
+  resultSchema: {
+    "$const(contractAddress)": {
+      command: "uleb(127)"
+    }
+  }
 };
 
 // manifests/publish_keyset.json
@@ -3923,7 +3943,12 @@ var publish_keyset_default = {
         }
       ]
     }
-  ]
+  ],
+  resultSchema: {
+    "$const(contractAddress)": {
+      command: "uleb(127)"
+    }
+  }
 };
 
 // manifests/mint_whitelist.json
@@ -3957,7 +3982,12 @@ var mint_whitelist_default = {
         }
       ]
     }
-  ]
+  ],
+  resultSchema: {
+    "$const(contractAddress)": {
+      command: "uleb(127)"
+    }
+  }
 };
 
 // manifests/get_allowed_mint.json
@@ -3989,6 +4019,7 @@ var get_allowed_mint_default = {
   ],
   resultSchema: {
     "$const(contractAddress)": {
+      command: "uleb(127)",
       allowedMint: "uleb(0)"
     }
   }
@@ -4023,6 +4054,7 @@ var get_balance_default = {
   ],
   resultSchema: {
     "$const(contractAddress)": {
+      command: "uleb(127)",
       balance: "uleb(0)"
     }
   }
@@ -4052,6 +4084,7 @@ var get_current_supply_default = {
   ],
   resultSchema: {
     "$const(contractAddress)": {
+      command: "uleb(127)",
       currentSupply: "uleb(0)"
     }
   }
@@ -4086,6 +4119,7 @@ var get_last_tx_hash_default = {
   ],
   resultSchema: {
     "$const(contractAddress)": {
+      command: "uleb(127)",
       lastTxHash: "vector(0)"
     }
   }
@@ -4169,6 +4203,12 @@ function ensureOk(resp, ctx) {
     throw new Error(`${ctx}: on-chain execution failed (executionStatus=${resp.executionStatus}, abortCode=${resp.abortCode})`);
   }
 }
+var TxId = class extends String {
+  constructor(value, result) {
+    super(value);
+    this.result = result;
+  }
+};
 async function sendBuiltTx(connection, txObject, ctx) {
   let resp;
   try {
@@ -4178,8 +4218,13 @@ async function sendBuiltTx(connection, txObject, ctx) {
   }
   ensureOk(resp, ctx);
   const txId = resp.txId;
+  const decoded = resp.decoded;
+  let baseEntry = void 0;
+  if (decoded && typeof decoded.get === "function") {
+    baseEntry = decoded.get(BASE_POD_HEX);
+  }
   if (!txId) throw new Error(`${ctx}: missing txId in successful response`);
-  return txId;
+  return new TxId(txId, baseEntry);
 }
 async function buildAndSend(connection, ctx, builder) {
   let txObject;
