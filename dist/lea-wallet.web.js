@@ -3086,6 +3086,25 @@ var PkmiCryptoHandler = class _PkmiCryptoHandler {
     };
   }
 };
+async function createInitializedHandler() {
+  const handler = new PkmiCryptoHandler();
+  await handler.init();
+  return handler;
+}
+async function verifyEd25519(message, signature, publicKey) {
+  if (!(message instanceof Uint8Array)) throw new TypeError("message must be a Uint8Array");
+  if (!(signature instanceof Uint8Array)) throw new TypeError("signature must be a Uint8Array");
+  if (!(publicKey instanceof Uint8Array)) throw new TypeError("publicKey must be a Uint8Array");
+  const handler = await createInitializedHandler();
+  return handler.verifyWith(handler.ed25519, publicKey, signature, message);
+}
+async function verifyFalcon512(message, signature, publicKey) {
+  if (!(message instanceof Uint8Array)) throw new TypeError("message must be a Uint8Array");
+  if (!(signature instanceof Uint8Array)) throw new TypeError("signature must be a Uint8Array");
+  if (!(publicKey instanceof Uint8Array)) throw new TypeError("publicKey must be a Uint8Array");
+  const handler = await createInitializedHandler();
+  return handler.verifyWith(handler.falcon512, publicKey, signature, message);
+}
 function hexToBytes2(hex) {
   if (typeof hex !== "string") {
     throw new TypeError("hexToBytes: expected string, got " + typeof hex);
@@ -3481,6 +3500,384 @@ async function decodeExecutionResult(resultBuffer, manifest) {
   }
   return results;
 }
+var BYTE_META = Symbol("ltm.byteMeta");
+var PUBSET_REGEX2 = /^\$pubset\(([^)]+)\)$/;
+function toHex(bytes) {
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+function lebToJson(value) {
+  const asNumber = Number(value);
+  if (Number.isSafeInteger(asNumber)) {
+    return asNumber;
+  }
+  return value.toString();
+}
+function bigintToJson(value) {
+  return lebToJson(value);
+}
+function copyBytes(source) {
+  const out = new Uint8Array(source.length);
+  out.set(source);
+  return out;
+}
+function decorateBytes(bytes, metadata = {}) {
+  if (!(bytes instanceof Uint8Array)) {
+    return bytes;
+  }
+  let store = bytes[BYTE_META];
+  if (!store) {
+    store = { cache: {}, meta: {} };
+    Object.defineProperty(bytes, BYTE_META, {
+      value: store,
+      enumerable: false,
+      configurable: false,
+      writable: false
+    });
+    Object.defineProperties(bytes, {
+      hex: {
+        enumerable: false,
+        configurable: false,
+        get() {
+          const bucket = this[BYTE_META];
+          if (!bucket.cache.hex) {
+            bucket.cache.hex = toHex(this);
+          }
+          return bucket.cache.hex;
+        }
+      },
+      bech32m: {
+        enumerable: false,
+        configurable: false,
+        get() {
+          const bucket = this[BYTE_META];
+          const hrp = bucket.meta.bech32mHrp;
+          if (!hrp) {
+            return void 0;
+          }
+          if (!bucket.cache.bech32m) {
+            bucket.cache.bech32m = encode2(hrp, this);
+          }
+          return bucket.cache.bech32m;
+        }
+      },
+      info: {
+        enumerable: false,
+        configurable: false,
+        get() {
+          const bucket = this[BYTE_META];
+          return bucket.meta;
+        }
+      }
+    });
+  }
+  Object.assign(store.meta, metadata);
+  return bytes;
+}
+function extractInstructionLayout(manifest) {
+  if (!manifest || !Array.isArray(manifest.invocations)) {
+    return null;
+  }
+  return manifest.invocations.map((invocation) => {
+    const instructions = Array.isArray(invocation.instructions) ? invocation.instructions : [];
+    return instructions.map((instr) => {
+      if (!instr || typeof instr !== "object") {
+        return { key: null, value: void 0, comment: void 0 };
+      }
+      const keys = Object.keys(instr).filter((k) => k !== "comment");
+      const key = keys[0] ?? null;
+      return {
+        key,
+        value: key ? instr[key] : void 0,
+        comment: typeof instr.comment === "string" ? instr.comment : void 0
+      };
+    });
+  });
+}
+function normaliseInstructionKey(layoutEntry) {
+  if (!layoutEntry || typeof layoutEntry.key !== "string") {
+    return null;
+  }
+  const upper = layoutEntry.key.toUpperCase();
+  if (upper === "INLINE") return "INLINE";
+  if (upper === "ULEB" || upper === "ULEB128") return "ULEB";
+  if (upper === "SLEB" || upper === "SLEB128") return "SLEB";
+  if (upper === "VECTOR") return "VECTOR";
+  return null;
+}
+function tryDecodePubset(decoder) {
+  const start = decoder.offset;
+  try {
+    const firstMarker = decoder.readUleb128();
+    const edPk = decoder.readVector();
+    const secondMarker = decoder.readUleb128();
+    const falconPk = decoder.readVector();
+    if (firstMarker !== 0n || secondMarker !== 1n) {
+      throw new Error("Unexpected pubset markers");
+    }
+    const end = decoder.offset;
+    const raw = copyBytes(decoder.data.subarray(start, end));
+    const edPkCopy = decorateBytes(copyBytes(edPk), { algorithm: "ed25519", role: "public" });
+    const falPkCopy = decorateBytes(copyBytes(falconPk), { algorithm: "falcon512", role: "public" });
+    const edSkStub = decorateBytes(new Uint8Array(0), { algorithm: "ed25519", role: "secret" });
+    const falSkStub = decorateBytes(new Uint8Array(0), { algorithm: "falcon512", role: "secret" });
+    return {
+      raw,
+      metadata: {
+        kind: "pubset",
+        keys: {
+          ed25519: { sk: edSkStub, pk: edPkCopy },
+          falcon512: { sk: falSkStub, pk: falPkCopy }
+        }
+      }
+    };
+  } catch (err) {
+    decoder.offset = start;
+    return null;
+  }
+}
+function decodeInline(decoder, layoutEntry) {
+  const layoutValue = layoutEntry?.value;
+  if (typeof layoutValue === "string") {
+    const pubsetMatch = layoutValue.match(PUBSET_REGEX2);
+    if (pubsetMatch) {
+      const decoded = tryDecodePubset(decoder);
+      if (decoded) {
+        const inlineBytes = decorateBytes(decoded.raw, {
+          kind: decoded.metadata.kind,
+          signer: pubsetMatch[1],
+          keys: decoded.metadata.keys,
+          source: layoutValue
+        });
+        const edSk = decorateBytes(new Uint8Array(0), { algorithm: "ed25519", role: "secret" });
+        const falSk = decorateBytes(new Uint8Array(0), { algorithm: "falcon512", role: "secret" });
+        inlineBytes.info.keyset = [
+          [edSk, decoded.metadata.keys.ed25519.pk],
+          [falSk, decoded.metadata.keys.falcon512.pk]
+        ];
+        return inlineBytes;
+      }
+    }
+  }
+  const remaining = decoder.data.subarray(decoder.offset);
+  const copy = copyBytes(remaining);
+  decoder.offset = decoder.data.length;
+  const metadata = typeof layoutValue === "string" ? { kind: "inline", source: layoutValue } : { kind: "inline" };
+  return decorateBytes(copy, metadata);
+}
+function decodeInstructions(vectorBytes, layoutEntries = []) {
+  const decoder = new MsctpDecoder(vectorBytes);
+  const instructions = [];
+  let index = 0;
+  while (decoder.hasNext()) {
+    const layoutEntry = layoutEntries[index];
+    const key = normaliseInstructionKey(layoutEntry);
+    const comment = layoutEntry?.comment;
+    let instruction;
+    if (key === "INLINE") {
+      const inlineBytes = decodeInline(decoder, layoutEntry);
+      instruction = { INLINE: inlineBytes };
+    } else if (key === "ULEB") {
+      const value = lebToJson(decoder.readUleb128());
+      instruction = { uleb: value };
+    } else if (key === "SLEB") {
+      const value = lebToJson(decoder.readSleb128());
+      instruction = { sleb: value };
+    } else if (key === "VECTOR") {
+      const payload = decorateBytes(copyBytes(decoder.readVector()), { kind: "vector" });
+      instruction = { vector: payload };
+    } else {
+      const type = decoder.peekType();
+      switch (type) {
+        case MSCTP_TT_ULEB128: {
+          const value = lebToJson(decoder.readUleb128());
+          instruction = { uleb: value };
+          break;
+        }
+        case MSCTP_TT_SLEB128: {
+          const value = lebToJson(decoder.readSleb128());
+          instruction = { sleb: value };
+          break;
+        }
+        case MSCTP_TT_SMALL_VECTOR:
+        case MSCTP_TT_LARGE_VECTOR: {
+          const payload = decorateBytes(copyBytes(decoder.readVector()), { kind: "vector" });
+          instruction = { vector: payload };
+          break;
+        }
+        default:
+          throw new Error(`Unsupported MSCTP instruction type ${type}.`);
+      }
+    }
+    if (comment) {
+      instruction.comment = comment;
+    }
+    instructions.push(instruction);
+    index++;
+  }
+  return instructions;
+}
+function toSafeIndex(bigintValue, fieldName) {
+  const asNumber = Number(bigintValue);
+  if (!Number.isSafeInteger(asNumber)) {
+    throw new Error(`${fieldName} is outside of JavaScript safe integer range.`);
+  }
+  return asNumber;
+}
+function normalizeOptions(options) {
+  const normalized = {
+    stripVmHeader: false,
+    manifest: null
+  };
+  if (!options || typeof options !== "object") {
+    return normalized;
+  }
+  const hasExplicitKeys = Object.prototype.hasOwnProperty.call(options, "stripVmHeader") || Object.prototype.hasOwnProperty.call(options, "manifest");
+  if (hasExplicitKeys) {
+    normalized.stripVmHeader = Boolean(options.stripVmHeader);
+    normalized.manifest = options.manifest ?? null;
+    return normalized;
+  }
+  const looksLikeManifest = Array.isArray(options.invocations) || typeof options.constants === "object" || options.signers && typeof options.signers === "object" || typeof options.feePayer === "string" || options.sequence !== void 0;
+  if (looksLikeManifest) {
+    normalized.manifest = options;
+  }
+  return normalized;
+}
+function decodeTransaction(txBytes, options = {}) {
+  if (!(txBytes instanceof Uint8Array)) {
+    throw new TypeError("decodeTransaction expects a Uint8Array.");
+  }
+  const { stripVmHeader, manifest } = normalizeOptions(options);
+  let workingBytes = txBytes;
+  let vmHeader = null;
+  if (stripVmHeader) {
+    const HEADER_LENGTH = 13;
+    if (workingBytes.length < HEADER_LENGTH) {
+      throw new Error("VM-wrapped transaction is shorter than the expected 13-byte header.");
+    }
+    const MAGIC = [76, 69, 65, 66];
+    for (let i = 0; i < MAGIC.length; i++) {
+      if (workingBytes[i] !== MAGIC[i]) {
+        throw new Error(`Invalid VM magic header at position ${i}. Expected '${String.fromCharCode(MAGIC[i])}'.`);
+      }
+    }
+    const vmVersion = workingBytes[4];
+    if (vmVersion !== 1) {
+      throw new Error(`Unsupported VM header version ${vmVersion}. Expected 0x01.`);
+    }
+    const lengthBytes = workingBytes.subarray(5, HEADER_LENGTH);
+    let declaredLength = 0n;
+    for (let i = 0; i < 8; i++) {
+      declaredLength |= BigInt(lengthBytes[i]) << BigInt(8 * i);
+    }
+    if (declaredLength > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new Error("VM length exceeds JavaScript safe integer range.");
+    }
+    const declaredLengthNumber = Number(declaredLength);
+    const remaining = workingBytes.length - HEADER_LENGTH;
+    if (declaredLengthNumber !== remaining) {
+      throw new Error(`VM length field (${declaredLengthNumber}) does not match remaining bytes (${remaining}).`);
+    }
+    vmHeader = {
+      magic: "LEAB",
+      version: vmVersion,
+      length: declaredLengthNumber
+    };
+    workingBytes = workingBytes.subarray(HEADER_LENGTH);
+  }
+  if (workingBytes.length < 32) {
+    throw new Error("Transaction is too short to contain a POD prefix.");
+  }
+  const pod = decorateBytes(copyBytes(workingBytes.subarray(0, 32)), { role: "pod" });
+  const sctpPayload = workingBytes.subarray(32);
+  const decoder = new MsctpDecoder(sctpPayload);
+  const version = decoder.readUleb128();
+  const sequence = decoder.readUleb128();
+  const addressBytes = decoder.readVector();
+  if (addressBytes.length % 32 !== 0) {
+    throw new Error(`Addresses vector must be a multiple of 32 bytes. Found length ${addressBytes.length}.`);
+  }
+  const addresses = [];
+  for (let offset = 0; offset < addressBytes.length; offset += 32) {
+    const slice = copyBytes(addressBytes.subarray(offset, offset + 32));
+    const index = addresses.length;
+    addresses.push(decorateBytes(slice, { bech32mHrp: ADDRESS_HRP3, index }));
+  }
+  const gasLimit = decoder.readUleb128();
+  const gasPrice = decoder.readUleb128();
+  const instructionLayouts = extractInstructionLayout(manifest);
+  const invocations = [];
+  let signatureStartOffset = -1;
+  let invocationIndex = 0;
+  while (decoder.hasNext()) {
+    const nextType = decoder.peekType();
+    if (nextType !== MSCTP_TT_ULEB128) {
+      break;
+    }
+    const targetIndexBig = decoder.readUleb128();
+    const instructionsVector = decoder.readVector();
+    const targetIndex = toSafeIndex(targetIndexBig, "Invocation target index");
+    const layoutEntries = instructionLayouts ? instructionLayouts[invocationIndex] : void 0;
+    const instructions = decodeInstructions(copyBytes(instructionsVector), layoutEntries);
+    invocations.push({
+      targetAddress: targetIndex,
+      instructions
+    });
+    invocationIndex++;
+  }
+  signatureStartOffset = decoder.offset;
+  const signatures = [];
+  while (decoder.hasNext()) {
+    const peek = decoder.peekType();
+    if (peek !== MSCTP_TT_SMALL_VECTOR && peek !== MSCTP_TT_LARGE_VECTOR) {
+      throw new Error(`Unexpected MSCTP type ${peek} while decoding signatures.`);
+    }
+    const ed25519 = decorateBytes(copyBytes(decoder.readVector()), { algorithm: "ed25519" });
+    if (!decoder.hasNext()) {
+      throw new Error("Unpaired signature vector encountered (missing Falcon-512 component).");
+    }
+    const falcon512 = decorateBytes(copyBytes(decoder.readVector()), { algorithm: "falcon512" });
+    signatures.push({
+      ed25519,
+      falcon512
+    });
+  }
+  const result = {
+    pod,
+    version: lebToJson(version),
+    sequence: bigintToJson(sequence),
+    gasLimit: bigintToJson(gasLimit),
+    gasPrice: bigintToJson(gasPrice),
+    addresses,
+    invocations,
+    signatures
+  };
+  if (vmHeader) {
+    result.vmHeader = vmHeader;
+  }
+  const preSignatureBytes = copyBytes(sctpPayload.subarray(0, signatureStartOffset >= 0 ? signatureStartOffset : sctpPayload.length));
+  const signatureBytes = signatureStartOffset >= 0 ? copyBytes(sctpPayload.subarray(signatureStartOffset)) : new Uint8Array(0);
+  Object.defineProperty(result, "hashes", {
+    enumerable: false,
+    configurable: false,
+    value: {
+      async base() {
+        const blake3 = await createBLAKE32();
+        blake3.init();
+        blake3.update(pod);
+        blake3.update(preSignatureBytes);
+        return blake3.digest("binary");
+      },
+      async baseHex() {
+        const bytes = await this.base();
+        return toHex(bytes);
+      },
+      preSignature: preSignatureBytes,
+      signatureSection: signatureBytes
+    }
+  });
+  return result;
+}
 var DOMAIN_TX_LINK_V1 = new Uint8Array([
   84,
   88,
@@ -3534,6 +3931,69 @@ async function computeTxLinkHash(oldHash, newHash) {
 }
 function toHexString(bytes) {
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+function normalizeKeyset(keyset) {
+  if (!keyset || typeof keyset !== "object") {
+    throw new TypeError("keyset must be an object or keyset array.");
+  }
+  if (Array.isArray(keyset)) {
+    const [ed, fal] = keyset;
+    if (!Array.isArray(ed) || !Array.isArray(fal)) {
+      throw new TypeError("keyset array must be [[edSk, edPk], [falSk, falPk]].");
+    }
+    const [, edPk] = ed;
+    const [, falPk] = fal;
+    return {
+      ed25519: Uint8Array.from(edPk ?? []),
+      falcon512: Uint8Array.from(falPk ?? [])
+    };
+  }
+  if (keyset.ed25519?.pk && keyset.falcon512?.pk) {
+    return {
+      ed25519: keyset.ed25519.pk instanceof Uint8Array ? keyset.ed25519.pk : Uint8Array.from(keyset.ed25519.pk),
+      falcon512: keyset.falcon512.pk instanceof Uint8Array ? keyset.falcon512.pk : Uint8Array.from(keyset.falcon512.pk)
+    };
+  }
+  if (keyset.keyset) {
+    return normalizeKeyset(keyset.keyset);
+  }
+  throw new TypeError("Unsupported keyset format. Expected {ed25519:{pk}, falcon512:{pk}} or [[sk, pk], ...].");
+}
+async function verifyTransactionWithKeyset(input, keyset, options = {}) {
+  let decoded;
+  let txBytes = null;
+  if (input instanceof Uint8Array) {
+    txBytes = input;
+    const { stripVmHeader = false } = options;
+    decoded = decodeTransaction(txBytes, { stripVmHeader });
+  } else if (input && typeof input === "object" && Array.isArray(input.invocations)) {
+    decoded = input;
+  } else {
+    throw new TypeError("verifyTransactionWithKeyset expects transaction bytes or a decoded transaction object.");
+  }
+  if (decoded.signatures.length !== 1) {
+    throw new Error(`Expected exactly one signature pair, found ${decoded.signatures.length}.`);
+  }
+  if (!decoded.hashes?.base) {
+    if (txBytes) {
+      decoded = decodeTransaction(txBytes, options);
+    } else {
+      throw new Error("Decoded transaction does not expose hash helpers.");
+    }
+    if (!decoded.hashes?.base) {
+      throw new Error("Unable to compute transaction hash for verification.");
+    }
+  }
+  const message = await decoded.hashes.base();
+  const { ed25519, falcon512 } = normalizeKeyset(keyset);
+  const signaturePair = decoded.signatures[0];
+  const edOk = await verifyEd25519(message, signaturePair.ed25519, ed25519);
+  const falOk = await verifyFalcon512(message, signaturePair.falcon512, falcon512);
+  return {
+    ok: edOk && falOk,
+    ed25519: edOk,
+    falcon512: falOk
+  };
 }
 async function createTransaction(manifest, signerKeys, options = {}) {
   const addressToHandlerMap = /* @__PURE__ */ new Map();
@@ -3632,35 +4092,67 @@ var sign_timestamp_default = {
 };
 
 // src/utils.js
+var isNode = typeof Buffer !== "undefined" && typeof Buffer.from === "function";
+function atobSafe(b64) {
+  if (isNode) return Buffer.from(b64, "base64").toString("binary");
+  return globalThis.atob(b64);
+}
+function btoaSafe(bin) {
+  if (isNode) return Buffer.from(bin, "binary").toString("base64");
+  return globalThis.btoa(bin);
+}
+function bytesToBinary(u8) {
+  let out = "";
+  const CHUNK = 32768;
+  for (let i = 0; i < u8.length; i += CHUNK) {
+    out += String.fromCharCode.apply(null, u8.subarray(i, i + CHUNK));
+  }
+  return out;
+}
+function binaryToBytes(bin) {
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i) & 255;
+  return u8;
+}
+function normalizeToBase64(s) {
+  const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = (4 - b64.length % 4) % 4;
+  return b64 + "=".repeat(pad);
+}
+function base64ToUint8Array(input) {
+  const b64 = normalizeToBase64(input);
+  if (isNode) return new Uint8Array(Buffer.from(b64, "base64"));
+  return binaryToBytes(atobSafe(b64));
+}
+function uint8ArrayToBase64(u8) {
+  if (isNode) return Buffer.from(u8).toString("base64");
+  return btoaSafe(bytesToBinary(u8));
+}
+function toBase64Url(u8) {
+  const b64 = uint8ArrayToBase64(u8);
+  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+function fromBase64Url(b64url) {
+  return base64ToUint8Array(b64url);
+}
 function areUint8ArraysEqual(a, b) {
   if (a === b) return true;
-  if (!a || !b || a.length !== b.length || !(a instanceof Uint8Array) || !(b instanceof Uint8Array)) {
-    return false;
-  }
+  if (!a || !b || a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
     if (a[i] !== b[i]) return false;
   }
   return true;
 }
-function combineUint8Arrays(arrays) {
-  return new Uint8Array(arrays.reduce((acc, val) => (acc.push(...val), acc), []));
-}
-function uint8ArrayToBase64(uint8Array) {
-  let binary = "";
-  const len = uint8Array.length;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(uint8Array[i]);
+function combineUint8Arrays(...arrs) {
+  let total = 0;
+  for (const a of arrs) total += a.length;
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const a of arrs) {
+    out.set(a, offset);
+    offset += a.length;
   }
-  return btoa(binary);
-}
-function base64ToUint8Array(base64) {
-  const binary = atob(base64);
-  const len = binary.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
+  return out;
 }
 
 // src/wallet.js
@@ -3693,12 +4185,11 @@ var WalletImpl = class {
     };
   }
   async signTimestamp(signTimestamp, accountIndex = 0) {
-    console.log("signTimestamp:", signTimestamp);
     const account = await this.getAccount(accountIndex);
     const signers = { publisher: account };
     sign_timestamp_default.constants.timestamp = String(signTimestamp);
     const tx = await createTransaction(sign_timestamp_default, signers);
-    return uint8ArrayToBase64(tx);
+    return toBase64Url(tx.tx);
   }
 };
 var Wallet = {
@@ -3713,6 +4204,41 @@ var Wallet = {
     return new WalletImpl(masterKey);
   }
 };
+async function validateSignedTimestamp(base64Url, maxDiff = 60) {
+  let txBytes;
+  let decoded;
+  try {
+    txBytes = fromBase64Url(base64Url);
+    decoded = decodeTransaction(txBytes, sign_timestamp_default);
+  } catch (error) {
+    throw new Error(`Failed to decode transaction: ${error.message}`);
+  }
+  const [invocation] = decoded.invocations;
+  if (!invocation) {
+    throw new Error("Timestamp transaction is missing the primary invocation.");
+  }
+  const feePayer = decoded.addresses[invocation.targetAddress];
+  if (!feePayer) {
+    throw new Error(`Invalid target address index: ${invocation.targetAddress}`);
+  }
+  const [{ uleb: receivedTimestamp }, inline] = invocation.instructions;
+  if (typeof receivedTimestamp !== "number") {
+    throw new Error("Timestamp instruction did not decode to a number.");
+  }
+  const keyset = inline?.INLINE?.info?.keyset;
+  if (!keyset) {
+    throw new Error("Inline pubset/keyset not found in transaction.");
+  }
+  const verification = await verifyTransactionWithKeyset(decoded, keyset);
+  if (!verification.ok) {
+    throw new Error("Signature verification failed.");
+  }
+  const now = Math.floor(Date.now() / 1e3);
+  if (Math.abs(receivedTimestamp - now) > maxDiff) {
+    throw new Error(`Timestamp drift too large (received ${receivedTimestamp}, now ${now}, max \xB1${maxDiff}s).`);
+  }
+  return feePayer.bech32m ?? feePayer.hex;
+}
 
 // src/connection.js
 var ConnectionImpl = class {
@@ -4390,8 +4916,11 @@ export {
   basePodMint,
   basePodTransfer,
   combineUint8Arrays,
+  fromBase64Url,
   generateMnemonic,
-  uint8ArrayToBase64
+  toBase64Url,
+  uint8ArrayToBase64,
+  validateSignedTimestamp
 };
 /*! Bundled license information:
 
