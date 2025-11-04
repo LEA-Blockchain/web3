@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Lea Base Pod Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: canvas;
+      color: canvastext;
+    }
+    header {
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid color-mix(in srgb, canvastext 18%, transparent);
+    }
+    main {
+      padding: 1.5rem 2rem 4rem;
+      display: grid;
+      gap: 1.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    }
+    section {
+      border: 1px solid color-mix(in srgb, canvastext 18%, transparent);
+      border-radius: 0.75rem;
+      padding: 1rem 1.25rem;
+      background: color-mix(in srgb, canvas 92%, canvastext 4%);
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    h1, h2 {
+      margin: 0;
+      font-weight: 600;
+    }
+    fieldset {
+      border: 1px dashed color-mix(in srgb, canvastext 24%, transparent);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+    }
+    fieldset legend {
+      padding: 0 0.5rem;
+      font-size: 0.95rem;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+    }
+    input, select, button, textarea {
+      font: inherit;
+      padding: 0.45rem 0.6rem;
+      border-radius: 0.4rem;
+      border: 1px solid color-mix(in srgb, canvastext 24%, transparent);
+      background: color-mix(in srgb, canvas 92%, canvastext 6%);
+      color: inherit;
+    }
+    input[type="file"] {
+      padding: 0.4rem 0.6rem;
+      background: color-mix(in srgb, canvas 98%, canvastext 2%);
+      width: 100%;
+    }
+    button {
+      cursor: pointer;
+      font-weight: 600;
+      border: 1px solid color-mix(in srgb, accentcolor 65%, transparent);
+      background: color-mix(in srgb, accentcolor 16%, canvas 85%);
+      transition: background 0.2s ease, border 0.2s ease;
+    }
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+    button:hover:not(:disabled) {
+      background: color-mix(in srgb, accentcolor 26%, canvas 75%);
+    }
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+    #log {
+      grid-column: 1 / -1;
+      min-height: 160px;
+      white-space: pre-wrap;
+      overflow: auto;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+    .file-status {
+      font-size: 0.85rem;
+      color: color-mix(in srgb, canvastext 65%, transparent);
+      overflow-wrap: anywhere;
+    }
+    .row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .row > label {
+      flex: 1 1 160px;
+      margin-top: 0;
+    }
+    .file-picker {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .inline-label {
+      margin-top: 0;
+      font-weight: 500;
+    }
+    .unit-row {
+      display: flex;
+      gap: 0.55rem;
+      align-items: center;
+    }
+    .unit-row > input {
+      flex: 1 1 auto;
+    }
+    .unit-row > select {
+      flex: 0 0 110px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Lea Base Pod Dashboard</h1>
+    <p>Interact with Lea Base Pod functions using the Lea web bundle fetched from <code>raw.githubusercontent.com/LEA-Blockchain/web3/main/dist/lea-wallet.web.js</code>.</p>
+  </header>
+  <main>
+    <section aria-labelledby="connection-settings">
+      <h2 id="connection-settings">Connection &amp; Key</h2>
+      <fieldset>
+        <legend>Cluster</legend>
+        <div class="row">
+          <label>
+            Select cluster
+            <select id="cluster">
+              <option value="devnet">devnet</option>
+              <option value="testnet">testnet</option>
+              <option value="mainnet-beta" selected>mainnet-beta</option>
+              <option value="local">local</option>
+              <option value="custom">Custom URL</option>
+            </select>
+          </label>
+          <label id="custom-url-wrapper" hidden>
+            Custom RPC URL
+            <input id="custom-url" type="url" placeholder="https://rpc.your-node.org">
+          </label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Keyset</legend>
+        <div class="file-picker">
+          <label class="inline-label" for="keyfile">Load JSON key file</label>
+          <input id="keyfile" type="file" accept="application/json">
+        </div>
+        <label>
+          Mnemonic (account 0 by default)
+          <textarea id="mnemonic" rows="2" placeholder="legal winner thank year wave ..."></textarea>
+        </label>
+        <label>
+          Account index
+          <input id="account-index" type="number" min="0" step="1" value="0">
+        </label>
+        <div class="actions">
+          <button type="button" id="load-mnemonic">Load Mnemonic</button>
+          <button type="button" id="clear-credentials">Clear</button>
+        </div>
+        <p class="file-status" id="file-status">No key loaded. Upload a JSON file containing <code>{ "keyset": {...}, "address": "lea..." }</code> or paste a mnemonic.</p>
+      </fieldset>
+    </section>
+
+    <section aria-labelledby="balance-tools">
+      <h2 id="balance-tools">Balance &amp; Supply</h2>
+      <form id="balance-form">
+        <label>
+          Address
+          <input id="balance-address" type="text" placeholder="lea1..." required>
+        </label>
+        <div class="actions">
+          <button type="submit">Get Balance</button>
+        </div>
+      </form>
+      <form id="supply-form">
+        <div class="actions">
+          <button type="submit">Get Current Supply</button>
+        </div>
+      </form>
+      <form id="allowed-mint-form">
+        <label>
+          Address
+          <input id="allowed-mint-address" type="text" placeholder="lea1..." required>
+        </label>
+        <div class="actions">
+          <button type="submit">Get Allowed Mint</button>
+        </div>
+      </form>
+    </section>
+
+    <section aria-labelledby="mint-tools">
+      <h2 id="mint-tools">Mint</h2>
+      <form id="mint-form">
+        <label>
+          Recipient Address
+          <input id="mint-address" type="text" placeholder="lea1..." required>
+        </label>
+        <label>
+          Amount
+          <div class="unit-row">
+            <input id="mint-amount" type="text" inputmode="decimal" placeholder="e.g. 1.5" required>
+            <select id="mint-unit">
+              <option value="lea">LEA</option>
+              <option value="ulea">uLEA</option>
+            </select>
+          </div>
+        </label>
+        <div class="actions">
+          <button type="submit">Mint</button>
+        </div>
+      </form>
+    </section>
+
+    <section aria-labelledby="transfer-tools">
+      <h2 id="transfer-tools">Transfer</h2>
+      <form id="transfer-form">
+        <label>
+          Recipient Address
+          <input id="transfer-address" type="text" placeholder="lea1..." required>
+        </label>
+        <label>
+          Amount
+          <div class="unit-row">
+            <input id="transfer-amount" type="text" inputmode="decimal" placeholder="e.g. 2" required>
+            <select id="transfer-unit">
+              <option value="lea">LEA</option>
+              <option value="ulea">uLEA</option>
+            </select>
+          </div>
+        </label>
+        <div class="actions">
+          <button type="submit">Transfer</button>
+        </div>
+      </form>
+    </section>
+
+    <section aria-labelledby="burn-tools">
+      <h2 id="burn-tools">Burn</h2>
+      <form id="burn-form">
+        <label>
+          Amount
+          <div class="unit-row">
+            <input id="burn-amount" type="text" inputmode="decimal" placeholder="e.g. 0.5" required>
+            <select id="burn-unit">
+              <option value="lea">LEA</option>
+              <option value="ulea">uLEA</option>
+            </select>
+          </div>
+        </label>
+        <div class="actions">
+          <button type="submit">Burn</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="log" aria-live="polite" aria-label="Execution log"></section>
+  </main>
+
+  <script type="module">
+    const REMOTE_BUNDLE_URL = "https://raw.githubusercontent.com/LEA-Blockchain/web3/refs/heads/main/dist/lea-wallet.web.js";
+    let sdkModulePromise = null;
+
+    async function loadSdkModule() {
+      if (!sdkModulePromise) {
+        const response = await fetch(REMOTE_BUNDLE_URL, { mode: "cors" });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch Lea bundle (${response.status})`);
+        }
+        const code = await response.text();
+        const blob = new Blob([code], { type: "application/javascript" });
+        const blobUrl = URL.createObjectURL(blob);
+        const imported = import(blobUrl).finally(() => URL.revokeObjectURL(blobUrl));
+        sdkModulePromise = imported.catch((error) => {
+          sdkModulePromise = null;
+          throw error;
+        });
+      }
+      return sdkModulePromise;
+    }
+
+    const {
+      Connection,
+      basePodGetBalance,
+      basePodGetCurrentSupply,
+      basePodMint,
+      basePodTransfer,
+      basePodBurn,
+      SystemProgram,
+      Wallet
+    } = await loadSdkModule();
+
+    const clusterSelect = document.getElementById("cluster");
+    const customUrlWrapper = document.getElementById("custom-url-wrapper");
+    const customUrlInput = document.getElementById("custom-url");
+    const keyfileInput = document.getElementById("keyfile");
+    const mnemonicTextarea = document.getElementById("mnemonic");
+    const accountIndexInput = document.getElementById("account-index");
+    const loadMnemonicButton = document.getElementById("load-mnemonic");
+    const clearCredentialsButton = document.getElementById("clear-credentials");
+    const fileStatus = document.getElementById("file-status");
+    const logBox = document.getElementById("log");
+
+    const usingFileProtocol = window.location.protocol === "file:";
+
+    const balanceForm = document.getElementById("balance-form");
+    const balanceAddressInput = document.getElementById("balance-address");
+    const supplyForm = document.getElementById("supply-form");
+    const mintForm = document.getElementById("mint-form");
+    const mintAddressInput = document.getElementById("mint-address");
+    const mintAmountInput = document.getElementById("mint-amount");
+    const mintUnitSelect = document.getElementById("mint-unit");
+    const transferForm = document.getElementById("transfer-form");
+    const transferAddressInput = document.getElementById("transfer-address");
+    const transferAmountInput = document.getElementById("transfer-amount");
+    const transferUnitSelect = document.getElementById("transfer-unit");
+    const burnForm = document.getElementById("burn-form");
+    const burnAmountInput = document.getElementById("burn-amount");
+    const burnUnitSelect = document.getElementById("burn-unit");
+    const allowedMintForm = document.getElementById("allowed-mint-form");
+    const allowedMintAddress = document.getElementById("allowed-mint-address");
+
+    const BASE_POD_HEX = "1111111111111111111111111111111111111111111111111111111111111111";
+
+    let currentKeyset = null;
+    let currentMnemonic = null;
+    let walletInstance = null;
+
+    function log(message, type = "info") {
+      const time = new Date().toISOString();
+      const label = type.toUpperCase();
+      logBox.textContent = `${time} [${label}] ${message}\n${logBox.textContent}`;
+    }
+
+    if (usingFileProtocol) {
+      logBox.textContent = "ℹ️ Loaded via file:// — fetching Lea web bundle from GitHub raw; ensure network access is allowed.\n";
+    }
+
+    function getConnection() {
+      const value = clusterSelect.value;
+      if (value === "custom") {
+        const url = customUrlInput.value.trim();
+        if (!url) {
+          throw new Error("Provide a custom RPC URL.");
+        }
+        return Connection(url);
+      }
+      return Connection(value);
+    }
+
+    function ensureKeyset() {
+      if (!currentKeyset) {
+        throw new Error("Load a key file or mnemonic before performing this action.");
+      }
+      return currentKeyset;
+    }
+
+    function ensureResponseOk(resp, ctx) {
+      if (!resp || typeof resp !== "object") {
+        throw new Error(`${ctx}: invalid response payload.`);
+      }
+      if (!resp.ok) {
+        const status = resp.status ?? "unknown";
+        throw new Error(`${ctx}: RPC returned status ${status}.`);
+      }
+      if (resp.decodeError) {
+        const reason = resp.decodeError?.message ?? String(resp.decodeError);
+        throw new Error(`${ctx}: failed to decode response (${reason}).`);
+      }
+      if (resp.executionStatus !== 0 || resp.abortCode !== 0) {
+        throw new Error(`${ctx}: execution failed (executionStatus=${resp.executionStatus}, abortCode=${resp.abortCode}).`);
+      }
+    }
+
+    async function fetchAllowedMintValue(connection, address) {
+      const txObject = await SystemProgram.getAllowedMint(address);
+      const resp = await connection.sendTransaction(txObject);
+      ensureResponseOk(resp, "AllowedMint");
+      const decoded = resp.decoded;
+      if (!decoded || typeof decoded.get !== "function") {
+        throw new Error("AllowedMint: decoded payload has unexpected shape.");
+      }
+      const baseEntry = decoded.get(BASE_POD_HEX);
+      if (!baseEntry) {
+        throw new Error("AllowedMint: base pod entry missing.");
+      }
+      const allowed = baseEntry.allowedMint;
+      if (typeof allowed === "bigint") return allowed;
+      if (typeof allowed === "number") return BigInt(allowed);
+      throw new Error("AllowedMint: `allowedMint` field missing or invalid.");
+    }
+
+    async function handleBalanceLookup(address) {
+      const resolved = address.trim();
+      if (!resolved) {
+        throw new Error("Balance lookup requires an address.");
+      }
+      const connection = getConnection();
+      log(`Querying balance for ${resolved}...`);
+      const balance = await basePodGetBalance(connection, resolved);
+      log(`Balance for ${resolved}: ${balance.toString()} lea`, "success");
+      return balance;
+    }
+
+    async function handleAllowedMintLookup(address) {
+      const resolved = address.trim();
+      if (!resolved) {
+        throw new Error("Allowed mint lookup requires an address.");
+      }
+      const connection = getConnection();
+      log(`Fetching allowed mint for ${resolved}...`);
+      const allowed = await fetchAllowedMintValue(connection, resolved);
+      log(`Allowed mint for ${resolved}: ${formatMicro(allowed)} (${allowed} uLEA)`, "success");
+      return allowed;
+    }
+
+    async function handleSupplyLookup() {
+      const connection = getConnection();
+      log("Fetching total supply...");
+      const supply = await basePodGetCurrentSupply(connection);
+      log(`Current supply: ${supply.toString()} lea`, "success");
+      return supply;
+    }
+
+    async function refreshAccountData(address) {
+      if (!address) {
+        log("Loaded key has no address; skipping balance refresh.", "warn");
+        return;
+      }
+      balanceAddressInput.value = address;
+      allowedMintAddress.value = address;
+      try {
+        await handleBalanceLookup(address);
+      } catch (error) {
+        log(`Balance error: ${error.message}`, "error");
+      }
+      try {
+        await handleAllowedMintLookup(address);
+      } catch (error) {
+        log(`Allowed mint error: ${error.message}`, "error");
+      }
+      try {
+        await handleSupplyLookup();
+      } catch (error) {
+        log(`Supply error: ${error.message}`, "error");
+      }
+    }
+
+    function parseAmountToMicro(amountInput, unitSelect) {
+      const raw = amountInput.value.trim();
+      if (!raw) {
+        throw new Error("Provide an amount.");
+      }
+      const unit = unitSelect.value;
+      if (unit === "lea") {
+        if (!/^\d+(?:\.\d{1,3})?$/.test(raw)) {
+          throw new Error("LEA amounts support up to three decimal places.");
+        }
+        const [whole, frac = ""] = raw.split(".");
+        const padded = (frac + "000").slice(0, 3);
+        return BigInt(whole) * 1000n + BigInt(padded);
+      }
+      if (!/^\d+$/.test(raw)) {
+        throw new Error("uLEA amounts must be whole numbers.");
+      }
+      return BigInt(raw);
+    }
+
+    function formatMicro(amountMicro) {
+      const sign = amountMicro < 0n ? "-" : "";
+      const abs = amountMicro < 0n ? -amountMicro : amountMicro;
+      const whole = abs / 1000n;
+      const fractional = abs % 1000n;
+      if (fractional === 0n) {
+        return `${sign}${whole} LEA`;
+      }
+      return `${sign}${whole}.${fractional.toString().padStart(3, "0")} LEA`;
+    }
+
+    function updateAmountPlaceholder(input, select, leaExample, uleaExample) {
+      const isLea = select.value === "lea";
+      input.placeholder = isLea ? leaExample : uleaExample;
+      input.setAttribute("inputmode", isLea ? "decimal" : "numeric");
+    }
+
+    clusterSelect.addEventListener("change", () => {
+      const isCustom = clusterSelect.value === "custom";
+      customUrlWrapper.hidden = !isCustom;
+      if (!isCustom) {
+        customUrlInput.value = "";
+      } else {
+        customUrlInput.focus();
+      }
+    });
+
+    mintUnitSelect.addEventListener("change", () => updateAmountPlaceholder(mintAmountInput, mintUnitSelect, "e.g. 1.5", "e.g. 1500"));
+    transferUnitSelect.addEventListener("change", () => updateAmountPlaceholder(transferAmountInput, transferUnitSelect, "e.g. 2", "e.g. 2000"));
+    burnUnitSelect.addEventListener("change", () => updateAmountPlaceholder(burnAmountInput, burnUnitSelect, "e.g. 0.5", "e.g. 500"));
+    updateAmountPlaceholder(mintAmountInput, mintUnitSelect, "e.g. 1.5", "e.g. 1500");
+    updateAmountPlaceholder(transferAmountInput, transferUnitSelect, "e.g. 2", "e.g. 2000");
+    updateAmountPlaceholder(burnAmountInput, burnUnitSelect, "e.g. 0.5", "e.g. 500");
+
+    keyfileInput.addEventListener("change", async (event) => {
+      const [file] = event.target.files;
+      if (!file) {
+        currentKeyset = null;
+        fileStatus.textContent = "No key loaded.";
+        balanceAddressInput.value = "";
+        allowedMintAddress.value = "";
+        return;
+      }
+
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        if (!parsed || typeof parsed !== "object" || !parsed.keyset) {
+          throw new Error("File missing `keyset` property.");
+        }
+        currentKeyset = parsed;
+        walletInstance = null;
+        currentMnemonic = null;
+        mnemonicTextarea.value = "";
+        accountIndexInput.value = String(accountIndexInput.value || 0);
+        fileStatus.textContent = `Loaded key for ${parsed.address ?? "unknown address"}.`;
+        log(`Key file loaded: ${parsed.address ?? "no address provided"}`, "info");
+        if (parsed.address) {
+          await refreshAccountData(parsed.address);
+        }
+      } catch (error) {
+        currentKeyset = null;
+        walletInstance = null;
+        fileStatus.textContent = `Failed to load key: ${error.message}`;
+        log(`Key load error: ${error.message}`, "error");
+      }
+    });
+
+    loadMnemonicButton.addEventListener("click", async () => {
+      const mnemonic = mnemonicTextarea.value.trim();
+      const index = Number.parseInt(accountIndexInput.value, 10);
+      if (!mnemonic) {
+        log("Provide a mnemonic before loading.", "error");
+        return;
+      }
+      if (!Number.isInteger(index) || index < 0) {
+        log("Account index must be a non-negative integer.", "error");
+        return;
+      }
+      try {
+        log("Deriving keyset from mnemonic...");
+        walletInstance = await Wallet.fromMnemonic(mnemonic);
+        const derivedAccount = await walletInstance.getAccount(index);
+        currentKeyset = derivedAccount;
+        currentMnemonic = mnemonic;
+        fileStatus.textContent = `Derived account ${index} (${derivedAccount.address}) from mnemonic.`;
+        keyfileInput.value = "";
+        log(`Mnemonic loaded: account ${index} (${derivedAccount.address}).`, "success");
+        await refreshAccountData(derivedAccount.address);
+      } catch (error) {
+        log(`Mnemonic error: ${error.message}`, "error");
+      }
+    });
+
+    clearCredentialsButton.addEventListener("click", () => {
+      currentKeyset = null;
+      currentMnemonic = null;
+      walletInstance = null;
+      keyfileInput.value = "";
+      mnemonicTextarea.value = "";
+      accountIndexInput.value = "0";
+      balanceAddressInput.value = "";
+      allowedMintAddress.value = "";
+      fileStatus.textContent = "No key loaded. Upload a JSON file containing { \"keyset\": {...}, \"address\": \"lea...\" } or paste a mnemonic.";
+      log("Cleared loaded credentials.", "info");
+    });
+
+    balanceForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        await handleBalanceLookup(balanceAddressInput.value);
+      } catch (error) {
+        log(`Balance error: ${error.message}`, "error");
+      }
+    });
+
+    supplyForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        await handleSupplyLookup();
+      } catch (error) {
+        log(`Supply error: ${error.message}`, "error");
+      }
+    });
+
+    allowedMintForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        await handleAllowedMintLookup(allowedMintAddress.value);
+      } catch (error) {
+        log(`Allowed mint error: ${error.message}`, "error");
+      }
+    });
+
+    mintForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        const account = ensureKeyset();
+        const connection = getConnection();
+        const address = mintAddressInput.value.trim();
+        const amountMicro = parseAmountToMicro(mintAmountInput, mintUnitSelect);
+        if (!address || amountMicro <= 0n) {
+          throw new Error("Provide a recipient and a positive amount.");
+        }
+        log(`Minting ${formatMicro(amountMicro)} (${amountMicro} uLEA) to ${address} from ${account.address ?? "unknown"}...`);
+        const txId = await basePodMint(connection, account, address, amountMicro);
+        log(`Mint transaction submitted. TxId: ${txId}`, "success");
+      } catch (error) {
+        log(`Mint error: ${error.message}`, "error");
+      }
+    });
+
+    transferForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        const account = ensureKeyset();
+        const connection = getConnection();
+        const address = transferAddressInput.value.trim();
+        const amountMicro = parseAmountToMicro(transferAmountInput, transferUnitSelect);
+        if (!address || amountMicro <= 0n) {
+          throw new Error("Provide a recipient and a positive amount.");
+        }
+        log(`Transferring ${formatMicro(amountMicro)} (${amountMicro} uLEA) to ${address} from ${account.address ?? "unknown"}...`);
+        const txId = await basePodTransfer(connection, account, address, amountMicro);
+        log(`Transfer transaction submitted. TxId: ${txId}`, "success");
+      } catch (error) {
+        log(`Transfer error: ${error.message}`, "error");
+      }
+    });
+
+    burnForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        const account = ensureKeyset();
+        const connection = getConnection();
+        const amountMicro = parseAmountToMicro(burnAmountInput, burnUnitSelect);
+        if (amountMicro <= 0n) {
+          throw new Error("Provide a positive amount to burn.");
+        }
+        log(`Burning ${formatMicro(amountMicro)} (${amountMicro} uLEA) from ${account.address ?? "unknown"}...`);
+        const txId = await basePodBurn(connection, account, amountMicro);
+        log(`Burn transaction submitted. TxId: ${txId}`, "success");
+      } catch (error) {
+        log(`Burn error: ${error.message}`, "error");
+      }
+    });
+  </script>
+</body>
+</html>
